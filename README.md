@@ -34,6 +34,10 @@ Przed szkoleniem należy zainstalować:
 
 Jeśli uczestnicy szkolenia korzystają w pracy z Docker'a, to należy zainstalować:
 
+#### Docker Desktop (Windows)
+
+* https://www.docker.com/products/docker-desktop/
+
 #### Visual Studio Code
 
 * [Visual Studio Code](https://code.visualstudio.com/)
