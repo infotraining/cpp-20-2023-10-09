@@ -32,7 +32,7 @@ auto multiply(T1 a, T2 b)
     return a * b;
 }
 
-template <size_t N>
+template <auto N>
 auto create_buffer()
 {
     if constexpr (N > 1024)
