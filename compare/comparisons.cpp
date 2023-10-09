@@ -301,3 +301,46 @@ TEST_CASE("Human - comparing")
 
     CHECK(john1 < Person{"John", 34});
 }
+
+////////////////////////////////////////////
+
+struct Data
+{
+    int* buffer_;
+    std::size_t size_;
+public:
+    Data(std::initializer_list<int> lst) : buffer_{new int[lst.size()]}, size_{lst.size()}
+    {
+        std::ranges::copy(lst, buffer_);
+    }
+
+    Data(const Data&) = delete;
+    Data& operator=(const Data&) = delete;
+
+    bool operator==(const Data& other) const 
+    {
+        return size_ == other.size_ && std::equal(buffer_, buffer_ + size_, other.buffer_);
+    }
+
+    auto operator<=>(const Data& other) const
+    {
+        return std::lexicographical_compare_three_way(buffer_, buffer_ + size_, other.buffer_, other.buffer_ + other.size_);
+    }
+
+    ~Data()
+    {
+        delete[] buffer_;
+    }
+};
+
+TEST_CASE("Data - comparisons")
+{
+    Data ds1{1, 2, 3};
+    Data ds2{1, 2, 3};
+    Data ds3{1, 2, 4};
+
+    CHECK(ds1 == ds2);
+    CHECK(ds1 != ds3);
+
+    CHECK(ds1 < ds3);
+}
