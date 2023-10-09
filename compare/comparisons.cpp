@@ -48,6 +48,11 @@ struct Point
     bool operator==(const Point&) const = default; // since C++20
 };
 
+// bool operator==(const Point& p1, const Point& p2)
+// {
+//     return std::tie(p1.x, p1.y) == std::tie(p2.x, p2.y);
+// }
+
 struct NamedPoint : Point
 {
     std::string name = "not-set";
@@ -82,7 +87,7 @@ struct Number
 {
     int value;
 
-    auto operator<=>(const Number& other) const = default;
+    std::strong_ordering operator<=>(const Number& other) const = default;
 
     bool operator==(const Number&) const = default; // implicitly declared when auto operator<=>(const Number&) const = default;
 };
@@ -119,6 +124,31 @@ TEST_CASE("many members and <=>")
     CHECK(Person{"Jan", 33} < Person{"Janek", 33});
 }
 
+struct FloatNumber
+{
+    double value;
+
+    bool operator==(const FloatNumber&) const = default;
+
+    auto operator<=>(const FloatNumber& other) const = default;
+};
+
+namespace TotalOrder
+{
+    struct FloatNumber
+    {
+        double value;
+
+        bool operator==(const FloatNumber&) const = default;
+
+        std::strong_ordering operator<=>(const FloatNumber& other) const
+        {
+            return std::strong_order(value, other.value);
+        }
+    };
+
+} // namespace TotalOrder
+
 TEST_CASE("operator <=>")
 {
     SECTION("result can be compared with zero")
@@ -144,12 +174,130 @@ TEST_CASE("operator <=>")
         SECTION("strong_ordering")
         {
             CHECK(4 <=> 4 == std::strong_ordering::equal);
+            CHECK(5 <=> 4 == std::strong_ordering::greater);
+            CHECK(3 <=> 4 == std::strong_ordering::less);
         }
 
         SECTION("partial_ordering")
         {
             CHECK(4.13 <=> 3.14 == std::partial_ordering::greater);
             CHECK(4.13 <=> 4.13 == std::partial_ordering::equivalent);
+            CHECK(3.44 <=> std::numeric_limits<double>::quiet_NaN() == std::partial_ordering::unordered);
+
+            CHECK(FloatNumber{3.13} < FloatNumber{3.14}); //  (FloatNumber{3.13} <=> FloatNumber{3.14}) < 0
+            CHECK(FloatNumber{3.13} <=> FloatNumber{3.14} == std::partial_ordering::less);
         }
     }
+}
+
+struct IntNan
+{
+    std::optional<int> value;
+
+    bool operator==(const IntNan& rhs) const
+    {
+        if (!value || !rhs.value)
+        {
+            return false;
+        }
+        return *value == *rhs.value;
+    }
+
+    std::partial_ordering operator<=>(const IntNan& rhs) const
+    {
+        if (!value || !rhs.value)
+        {
+            return std::partial_ordering::unordered;
+        }
+
+        return *value <=> *rhs.value; // std::strong_ordering is implicitly converted to std::partial_ordering
+    }
+};
+
+TEST_CASE("IntNan - comparisons")
+{
+    auto result = IntNan{2} <=> IntNan{4};
+    CHECK(result == std::partial_ordering::less);
+
+    result = IntNan{2} <=> IntNan{};
+    CHECK(result == std::partial_ordering::unordered);
+
+    CHECK(IntNan{4} == IntNan{4});
+    CHECK(IntNan{4} != IntNan{5});
+
+    result = IntNan{4} <=> IntNan{4};
+    CHECK(result == std::partial_ordering::equivalent);
+}
+
+TEST_CASE("std::strong_order & NaN")
+{
+    std::vector<double> numbers_with_nan = { 3.14, 5.0, std::numeric_limits<double>::quiet_NaN() , 1.11 };
+
+    std::sort(numbers_with_nan.begin(), numbers_with_nan.end(), [](auto a, auto b) { return std::strong_order(a, b) < 0; });
+}
+
+struct Base
+{
+    std::string value;
+
+    bool operator==(const Base& other) const { return value == other.value; }
+    bool operator<(const Base& other) const { return value < other.value; }
+};
+
+struct Derived : Base
+{
+    std::vector<int> data;
+ 
+    std::strong_ordering operator<=>(const Derived& other) const = default;
+};
+
+TEST_CASE("default <=> - how it works")
+{
+    Derived d1{{"text"}, {1, 2, 3}};
+    Derived d2{{"text"}, {1, 2, 4}};
+
+    CHECK(d1 < d2);
+}
+
+struct Human
+{
+    std::string name;
+    int how_old;
+    double height; 
+
+    bool operator==(const Human& rhs) const 
+    {
+        return std::tie(name, how_old) == std::tie(rhs.name, rhs.how_old);
+    }
+
+    std::strong_ordering operator<=>(const Human& rhs) const
+    {
+        // if (auto cmp_result = name <=> rhs.name; cmp_result = 0)
+        // {
+        //     return how_old <=> rhs.how_old;
+        // }
+        // else
+        // {
+        //     return cmp_result;
+        // }
+
+        return std::tie(name, how_old) <=> std::tie(rhs.name, rhs.how_old);
+    }
+
+    auto operator<=>(const Person& p) const
+    {
+        return std::tie(name, how_old) <=> std::tie(p.name, p.age);
+    }
+};
+
+TEST_CASE("Human - comparing")
+{
+    Human john1{"John", 33, 178.8};
+    Human john2{"John", 33, 168.8};
+
+    CHECK(john1 == john2);
+    CHECK(john1 <= john2);
+    CHECK(john1 > Human{"John", 22});
+
+    CHECK(john1 < Person{"John", 34});
 }
