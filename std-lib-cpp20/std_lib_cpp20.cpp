@@ -5,6 +5,7 @@
 #include <vector>
 #include <format>
 #include <numbers>
+#include <numeric>
 
 using namespace std::literals;
 
@@ -86,4 +87,23 @@ TEST_CASE("dangling pointers & span")
     print(head);
 
     vec.push_back(4); // UB - iterators in span are invalidated
+}
+
+TEST_CASE("subspans")
+{
+    std::vector<int> vec(100);
+    std::iota(vec.begin(), vec.end(), 0);
+
+    print(vec);
+
+    size_t col_size = 10;
+
+    std::cout << "\n";
+
+    for(size_t row = 0; row < vec.size() / col_size; ++row)
+    {
+        auto row_data = std::span{vec}.subspan(row * col_size, col_size);
+
+        print(row_data);
+    }
 }
