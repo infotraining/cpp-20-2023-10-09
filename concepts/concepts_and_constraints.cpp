@@ -104,10 +104,130 @@ void print(const TContainer& c, std::string_view prefix = "items")
     std::cout << "]\n";
 }
 
+namespace ver_1
+{
+    // unconstrained template
+    template <typename T>
+    // requires (!Traits::is_pointer_v<T>)
+    T max_value(T a, T b)
+    {
+        return (a < b) ? b : a;
+    }
+
+    // constrained template
+    template <typename T>
+        requires Traits::is_pointer_v<T>
+    auto max_value(T a, T b)
+    {
+        assert(a != nullptr);
+        assert(b != nullptr);
+        return (*a < *b) ? *b : *a;
+    }
+} // namespace ver_1
+
+template <typename T>
+concept Pointer = Traits::is_pointer_v<T>;
+
+namespace ver_2
+{
+    static_assert(Pointer<int*>);
+    static_assert(!Pointer<int>);
+
+    // unconstrained template
+    template <typename T>
+    T max_value(T a, T b)
+    {
+        return (a < b) ? b : a;
+    }
+
+    // constrained template
+    template <typename T>
+        requires Pointer<T>
+    auto max_value(T a, T b)
+    {
+        assert(a != nullptr);
+        assert(b != nullptr);
+        return (*a < *b) ? *b : *a;
+    }
+} // namespace ver_2
+
+namespace ver_3
+{
+    template <typename T>
+    T max_value(T a, T b)
+    {
+        return (a < b) ? b : a;
+    }
+
+    // constrained template
+    template <Pointer T>
+    auto max_value(T a, T b)
+    {
+        assert(a != nullptr);
+        assert(b != nullptr);
+        return (*a < *b) ? *b : *a;
+    }
+} // namespace ver_3
+
+namespace ver_4
+{
+    auto max_value(auto a, auto b)
+    {
+        return (a < b) ? b : a;
+    }
+
+    auto max_value(std::integral auto a, std::integral auto b)
+    {
+        return std::cmp_less(a, b) ? b : a;
+    }
+
+    namespace IsInterpreted
+    {
+        template <typename T1, typename T2>
+        auto max_value(T1 a, T2 b)
+        {
+            return (a < b) ? b : a;
+        }
+    } // namespace IsInterpreted
+
+    auto max_value(Pointer auto a, Pointer auto b)
+    {
+        assert(a != nullptr);
+        assert(b != nullptr);
+        return max_value(*a, *b);
+    }
+
+    namespace IsInterpreted
+    {
+        template <Pointer T1, Pointer T2>
+        auto max_value(T1 a, T2 b)
+        {
+            assert(a != nullptr);
+            assert(b != nullptr);
+            return max_value(*a, *b);
+        }
+    } // namespace IsInterpreted
+} // namespace ver_4
+
 TEST_CASE("constraints")
 {
-    print(std::vector{1, 2, 3}, "vec");
-    REQUIRE(true);
+    using namespace ver_4;
+
+    int x = -10;
+    int y = 20;
+
+    CHECK(max_value(x, y) == 20);
+
+    std::string str1 = "text";
+    std::string str2 = "Text";
+
+    CHECK(max_value(str1, str2) == "text");
+
+    CHECK(max_value(&x, &y) == 20);
+
+    unsigned int ux = 40;
+
+    CHECK(max_value(x, ux) == 40);
 }
 
 TEST_CASE("concepts")
