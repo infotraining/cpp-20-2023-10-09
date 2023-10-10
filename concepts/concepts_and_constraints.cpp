@@ -115,7 +115,7 @@ void print(const TContainer& c, std::string_view prefix = "items")
 namespace AlternativeTake
 {
     template <typename TContainer>
-        requires                                                                     // requires clause
+        requires                                                                         // requires clause
             requires(std::ranges::range_value_t<TContainer> item) { std::cout << item; } // requires expression
     void print(const TContainer& c, std::string_view prefix = "items")
     {
@@ -390,4 +390,102 @@ TEST_CASE("add to container")
 
     std::set<int> set_ints;
     add_to_container(set_ints, 42);
+}
+
+//////////////////////////////////////////////
+// concept subsumation
+
+struct BoundingBox
+{
+    int w, h;
+};
+
+struct Color
+{
+    uint8_t r, g, b;
+};
+
+template <typename T>
+concept Shape = requires(T obj)
+{
+    { obj.box() } -> std::same_as<BoundingBox>;
+    obj.draw();
+};
+
+template <typename T>
+concept ShapeWithColor = Shape<T> && requires(T shp, Color c) {
+    shp.set_color(c);
+    { shp.get_color() } -> std::same_as<Color>;
+};
+
+template <Shape T>
+void render(const T& shp)
+{
+    std::cout << "template <Shape T> void render(const T& shp)\n";
+    shp.draw();
+}
+
+template <ShapeWithColor T>
+void render(T&& shp)
+{
+    std::cout << "template <ShapeWithColor T> void render(const T& shp)\n";
+    shp.set_color({0, 0, 0});
+    shp.draw();
+}
+
+struct Rect
+{
+    int w, h;
+    Color color;
+
+    void draw() const
+    {
+        std::cout << "Rect::draw()\n";
+    }
+
+    BoundingBox box() const
+    {
+        return BoundingBox{w, h};
+    }
+
+    void set_color(Color c)
+    {
+        std::cout << "Setting color\n";
+        color = c;
+    }
+
+    Color get_color() const
+    {
+        return color;
+    }
+};
+
+TEST_CASE("subsuming concepts")
+{
+    render(Rect{100, 200});
+}
+
+//////////////////////////////////////////////////////////
+
+template <typename T>
+concept SignedIntegral = std::integral<T> && std::is_signed_v<T>; // more constrained than integral<T>
+
+template <typename T>
+concept Arithmetic = std::integral<T> || std::floating_point<T>;  // less constrained than integral<T>
+
+template <std::integral T>
+void foo(T value)
+{
+    std::cout << "template <typename T> requires std::is_integral_v<T> void foo(T value)\n";
+}
+
+template <SignedIntegral T>
+void foo(T value)
+{
+    std::cout << "template <typename T> requires std::is_integral_v<T> void foo(T value)\n";
+}
+
+TEST_CASE("subsuming requires concepts")
+{
+    foo(42);
 }
