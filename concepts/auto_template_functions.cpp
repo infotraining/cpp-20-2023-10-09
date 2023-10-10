@@ -23,13 +23,19 @@ Vector operator*(const Vector& v, double d)
 
 double operator*(const Vector& a, const Vector& b)
 {
-    return a.x;
+    return a.x * b.x + a.y * b.y;
 }
 
 template <typename T1, typename T2>
 auto multiply(T1 a, T2 b)
 {
     return a * b;
+}
+
+TEST_CASE("multiply")
+{
+    CHECK(multiply(Vector{1, 1}, 2) == Vector{2, 2});
+    CHECK(multiply(Vector{1, 1}, Vector{1, 0}) == 1.0);
 }
 
 template <auto N>
@@ -41,19 +47,14 @@ auto create_buffer()
         return std::array<std::byte, N>{};
 }
 
-TEST_CASE("multiply")
+TEST_CASE("create_buffer")
 {
-    CHECK(multiply(Vector{1, 1}, 2) == Vector{2, 2});
-    CHECK(multiply(Vector{1, 1}, Vector{1, 0}) == 1.0);
-
     auto buffer1 = create_buffer<2048>();
     auto buffer2 = create_buffer<512>();
 }
 
-auto foo(int arg)
-{
-    return arg * 2.0;
-}
+////////////////////////////////////////////////////////////////////
+
 
 auto my_cmp_less = [](const auto& a, const auto& b) {
     return a < b;
@@ -74,6 +75,14 @@ namespace IsInterpreted
     }
 } // namespace IsInterpreted
 
+TEST_CASE("functions with auto")
+{
+    print(42, "value"s);
+    print("text"s, "value"s);
+}
+
+////////////////////////////////////////////////////////////////////
+
 template <typename F, typename... TArgs>
 decltype(auto) call_wrapper(F f, TArgs&&... args)
 {
@@ -92,10 +101,14 @@ namespace Cpp20
     }
 } // namespace Cpp20
 
-TEST_CASE("functions with auto")
+int add(int a, int b)
 {
-    print(42, "value"s);
-    print("text"s, "value"s);
+    return a + b;
+}
+
+TEST_CASE("call_wrapper")
+{
+    CHECK(call_wrapper(add, 1, 2) == 3);
 }
 
 // mixed style

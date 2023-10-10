@@ -22,15 +22,10 @@ using namespace std::literals;
 
 std::pair<std::string_view, std::string_view> split(std::string_view line, std::string_view separator = "/")
 {
-    std::pair<std::string_view, std::string_view> result;
-
-    if (std::string::size_type pos = line.find(separator.data()); pos != std::string::npos)
-    {
-        result.first = std::string_view{line.begin(), line.begin() + pos};
-        result.second = std::string_view{line.begin() + pos + 1, line.end()};
-    }
-
-    return result;
+    if (auto pos = line.find(separator); pos == std::string_view::npos)
+        return {line, ""sv};
+    else
+        return {line.substr(0, pos), line.substr(pos + 1)};
 }
 
 TEST_CASE("split")
@@ -39,7 +34,7 @@ TEST_CASE("split")
     CHECK(split(s1) == std::pair{"324"sv, "44"sv});
 
     std::string s2 = "4343";
-    CHECK(split(s2) == std::pair{""sv, ""sv});
+    CHECK(split(s2) == std::pair{"4343"sv, ""sv});
 
     std::string s3 = "345/";
     CHECK(split(s3) == std::pair{"345"sv, ""sv});
