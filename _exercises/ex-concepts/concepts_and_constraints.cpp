@@ -149,9 +149,9 @@ void print_all(const IndexableContainer auto& container)
 
 TEST_CASE("container concepts")
 {
-    // std::vector vec = {1, 2, 3, 4};
-    // print_all(vec);
+    std::vector vec = {1, 2, 3, 4};
+    print_all(vec);
 
-    // std::list lst{1, 2, 3};
-    // print_all(lst);
+    std::list lst{1, 2, 3};
+    print_all(lst);
 }
