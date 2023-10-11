@@ -41,6 +41,23 @@ TEST_CASE("split")
 
     std::string s4 = "/434";
     CHECK(split(s4) == std::pair{""sv, "434"sv});
+
+    SECTION("spliting string")
+    {
+        const char* text = "abc def ghi";
+
+        std::vector<std::string_view> tokens;
+
+        auto splitted_ranges = std::string_view(text) | std::views::split(" "sv);
+
+        for (auto&& rng : splitted_ranges)
+        {
+            tokens.emplace_back(&*rng.begin(), std::ranges::distance(rng));
+            // tokens.emplace_back(rng); // since C++23
+        }
+
+        CHECK(tokens == std::vector{"abc"sv, "def"sv, "ghi"sv});
+    }
 }
 
 TEST_CASE("Exercise - ranges")
@@ -62,11 +79,17 @@ TEST_CASE("Exercise - ranges")
 
     helpers::print(lines, "lines");
 
-    auto result = lines;
+    auto result = std::views::all(lines)
+                    | std::views::drop_while([](const std::string_view& sv) { return sv.starts_with("#"); })
+                    //| std::views::filter([](const std::string_view& sv){ return sv.rfind("\n", 0) != 0; })
+                    //| std::views::filter([](auto& item) { return !item.contains('\n'); })
+                    | std::views::filter([](const auto& sv) { return sv != "\n"; })
+                    | std::views::transform([](const std::string_view& sv){ return split(sv); })
+                    | std::views::elements<1>;
 
     helpers::print(result, "result");
 
     auto expected_result = {"one"s, "two"s, "three"s, "four"s, "five"s, "six"s};
 
-    //CHECK(std::ranges::equal(result, expected_result));
+    CHECK(std::ranges::equal(result, expected_result));
 }
